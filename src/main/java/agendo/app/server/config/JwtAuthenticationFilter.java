@@ -28,13 +28,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain) throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
-
         try {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
+                String token = authHeader.substring(7); // dps de "bearer " pega o token
 
                 UserEntity user = userRepository.findByToken(token)
-                        .orElseThrow(() -> new BadCredentialsException("Token inválido"));
+                        .orElseThrow(() -> new BadCredentialsException("Token inválido")); // se nao encontrar o usuario lanca a excecao
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(user, null, java.util.List.of());

@@ -2,12 +2,13 @@ package agendo.app.server.modules.appointment.service;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import agendo.app.server.modules.appointment.models.AppointmentEntity;
 import agendo.app.server.modules.appointment.repository.AppointmentRepository;
 import agendo.app.server.modules.user.models.UserEntity;
-import agendo.app.server.modules.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -15,27 +16,25 @@ import lombok.RequiredArgsConstructor;
 public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
-    private final UserService userService;
 
     public AppointmentEntity create(AppointmentEntity appointment) {
         return appointmentRepository.save(appointment);
     }
 
-    public AppointmentEntity findById(Long id) {
-        return appointmentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Appointment not found: " + id));
-    }
-    public List<AppointmentEntity> findAll() {
-        return appointmentRepository.findAll();
+    public AppointmentEntity findByIdAndParticipant(Long id, UserEntity user) {
+        return appointmentRepository.findByIdAndParticipant(id, user)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found: " + id));
     }
 
-    public List<AppointmentEntity> findByProfessional(Long professionalId) {
-        UserEntity professional = userService.findById(professionalId);
-        return appointmentRepository.findByProfessional(professional);
+    public List<AppointmentEntity> findByParticipant(UserEntity user) {
+        return appointmentRepository.findByParticipant(user);
     }
 
-    public List<AppointmentEntity> findByClient(Long clientId) {
-        UserEntity client = userService.findById(clientId);
-        return appointmentRepository.findByClient(client);
+    public List<AppointmentEntity> findByRole(UserEntity user, String role) {
+        return switch (role) {
+            case "professional" -> appointmentRepository.findByProfessional(user);
+            case "client" -> appointmentRepository.findByClient(user);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role inválida. Use 'professional' ou 'client'");
+        };
     }
 }
