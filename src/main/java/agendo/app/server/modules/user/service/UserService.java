@@ -1,13 +1,23 @@
 package agendo.app.server.modules.user.service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import agendo.app.server.modules.user.models.ClientProfileEntity;
+import agendo.app.server.modules.user.models.ProfessionalProfileEntity;
+import agendo.app.server.modules.user.models.ProfessionEntity;
 import agendo.app.server.modules.user.models.UserEntity;
 import agendo.app.server.modules.user.models.UserRole;
+import agendo.app.server.modules.user.repository.ClientProfileRepository;
+import agendo.app.server.modules.user.repository.ProfessionalProfileRepository;
+import agendo.app.server.modules.user.repository.ProfessionRepository;
 import agendo.app.server.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -16,10 +26,47 @@ import lombok.RequiredArgsConstructor;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final ProfessionalProfileRepository professionalProfileRepository;
+    private final ClientProfileRepository clientProfileRepository;
+    private final ProfessionRepository professionRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @Transactional
     public UserEntity create(UserEntity user) {
         return userRepository.save(user);
+    }
+
+    @Transactional
+    public UserEntity createWithProfile(UserEntity user, Long professionId, String bio, BigDecimal hourlyRate,
+                                         String taxId, String preferredPaymentMethod) {
+        UserEntity savedUser = userRepository.save(user);
+
+        if (savedUser.getRole() == UserRole.PROFESSIONAL) {
+            ProfessionalProfileEntity.ProfessionalProfileEntityBuilder profileBuilder = ProfessionalProfileEntity.builder()
+                    .user(savedUser)
+                    .bio(bio)
+                    .hourlyRate(hourlyRate);
+
+            if (professionId != null) {
+                ProfessionEntity profession = professionRepository.findById(professionId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Profissão não encontrada: " + professionId));
+                profileBuilder.profession(profession);
+            }
+
+            ProfessionalProfileEntity profile = profileBuilder.build();
+            professionalProfileRepository.save(profile);
+            savedUser.setProfessionalProfile(profile);
+        } else if (savedUser.getRole() == UserRole.CLIENT) {
+            ClientProfileEntity profile = ClientProfileEntity.builder()
+                    .user(savedUser)
+                    .taxId(taxId)
+                    .preferredPaymentMethod(preferredPaymentMethod)
+                    .build();
+            clientProfileRepository.save(profile);
+            savedUser.setClientProfile(profile);
+        }
+
+        return savedUser;
     }
 
     public UserEntity findById(Long id) {
@@ -45,5 +92,13 @@ public class UserService {
 
     public String encodePassword(String rawPassword) {
         return passwordEncoder.encode(rawPassword);
+    }
+
+    public Optional<ProfessionalProfileEntity> findProfessionalProfile(UserEntity user) {
+        return professionalProfileRepository.findByUser(user);
+    }
+
+    public Optional<ClientProfileEntity> findClientProfile(UserEntity user) {
+        return clientProfileRepository.findByUser(user);
     }
 }
