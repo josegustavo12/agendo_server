@@ -352,6 +352,88 @@ Retorna apenas se o serviço pertencer ao usuário autenticado. `404` caso contr
 
 ---
 
+### ⭐ Ratings — `/ratings`
+
+#### `POST /ratings` — Avaliar profissional
+Autenticado. Apenas clientes podem avaliar profissionais.
+
+**Body:**
+```json
+{
+  "professionalId": 1,
+  "score": 5,
+  "comment": "Trabalho excelente, muito profissional!"
+}
+```
+
+**Resposta 201:**
+```json
+{
+  "id": 1,
+  "score": 5,
+  "comment": "Trabalho excelente, muito profissional!",
+  "clientId": 2,
+  "clientName": "Maria Santos",
+  "professionalId": 1,
+  "professionalName": "João Silva",
+  "createdAt": "2026-03-12T14:30:00"
+}
+```
+
+---
+
+#### `GET /ratings/professional/{id}` — Avaliações do profissional
+Público. Retorna todas as avaliações recebidas por um profissional. A média é atualizada automaticamente.
+
+**Resposta 200:**
+```json
+[
+  {
+    "id": 1,
+    "score": 5,
+    "comment": "Trabalho excelente!",
+    "clientId": 2,
+    "clientName": "Maria Santos",
+    "professionalId": 1,
+    "professionalName": "João Silva",
+    "createdAt": "2026-03-12T14:30:00"
+  },
+  {
+    "id": 2,
+    "score": 4,
+    "comment": "Bom trabalho",
+    "clientId": 3,
+    "clientName": "Pedro Costa",
+    "professionalId": 1,
+    "professionalName": "João Silva",
+    "createdAt": "2026-03-11T10:15:00"
+  }
+]
+```
+
+---
+
+#### `GET /ratings/my-ratings` — Minhas avaliações
+Autenticado. Retorna todas as avaliações feitas pelo cliente autenticado.
+
+**Resposta 200:**
+```json
+[
+  {
+    "id": 1,
+    "score": 5,
+    "comment": "Trabalho excelente!",
+    "clientId": 2,
+    "clientName": "Maria Santos",
+    "professionalId": 1,
+    "professionalName": "João Silva",
+    "createdAt": "2026-03-12T14:30:00"
+  }
+]
+```
+
+---
+
 ### 📅 Appointments — `/appointments`
 
 Todos os endpoints requerem autenticação.
@@ -413,6 +495,9 @@ Retorna apenas se o usuário autenticado for profissional ou cliente do agendame
 | GET | `/professionals` | ❌ | Buscar profissionais com filtros |
 | GET | `/professionals/{id}` | ❌ | Detalhes do profissional |
 | GET | `/professionals/{id}/services` | ❌ | Serviços do profissional |
+| POST | `/ratings` | ✅ | Avaliar profissional |
+| GET | `/ratings/professional/{id}` | ❌ | Avaliações do profissional |
+| GET | `/ratings/my-ratings` | ✅ | Minhas avaliações |
 | POST | `/service-types` | ✅ | Criar serviço |
 | GET | `/service-types` | ✅ | Listar meus serviços |
 | GET | `/service-types/{id}` | ✅ | Buscar serviço |
