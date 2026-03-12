@@ -1,7 +1,5 @@
 package agendo.app.server.modules.user.dto;
 
-import java.math.BigDecimal;
-
 public record UserResponse(
     Long id,
     String name,
@@ -16,8 +14,6 @@ public record UserResponse(
         Long professionId,
         String professionName,
         String bio,
-        BigDecimal hourlyRate,
-        Double ratingAverage,
         Boolean isAvailable
     ) {}
 

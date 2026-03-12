@@ -1,5 +1,7 @@
 package agendo.app.server.modules.appointment.models;
 
+import java.math.BigDecimal;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -19,7 +21,10 @@ import agendo.app.server.modules.user.models.UserEntity;
 
 @Entity
 @Table(name = "service_types")
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ServiceTypeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,7 +35,10 @@ public class ServiceTypeEntity {
 
     private String description;
 
-    @JsonIgnore // nao envia na resposta Appointment
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal price;
+
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
     private UserEntity owner;

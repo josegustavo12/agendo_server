@@ -32,17 +32,7 @@ public class RatingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O usuário avaliado deve ser um profissional");
         }
 
-        RatingEntity saved = ratingRepository.save(rating);
-
-        // atualiza a média de avaliações no perfil do profissional
-        Double average = ratingRepository.getAverageScoreByProfessionalId(rating.getProfessional().getId());
-        professionalProfileRepository.findByUserId(rating.getProfessional().getId())
-                .ifPresent(profile -> {
-                    profile.setRatingAverage(average != null ? average : 0.0);
-                    professionalProfileRepository.save(profile);
-                });
-
-        return saved;
+        return ratingRepository.save(rating);
     }
 
     public List<RatingEntity> findByProfessionalId(Long professionalId) {

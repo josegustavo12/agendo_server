@@ -9,6 +9,7 @@ API REST para gerenciamento de agendamentos entre profissionais e clientes.
 - Spring Security (autenticação por Bearer Token)
 - PostgreSQL
 - Hibernate / Spring Data JPA
+- Flyway (gerenciamento de migrações de schema)
 - Swagger / OpenAPI 3
 
 ## Pré-requisitos
@@ -25,6 +26,21 @@ As configurações estão em `src/main/resources/application.properties`:
 spring.datasource.url=jdbc:postgresql://localhost:5432/agendo_db
 spring.datasource.username=admin
 spring.datasource.password=1234
+spring.jpa.hibernate.ddl-auto=validate
+
+# Flyway
+spring.flyway.baseline-on-migrate=true
+spring.flyway.baseline-version=0
+```
+
+### Primeiro Setup
+
+Na primeira vez que configurar o banco, execute no PostgreSQL:
+
+```sql
+CREATE DATABASE agendo_db;
+GRANT ALL ON SCHEMA public TO admin;
+ALTER SCHEMA public OWNER TO admin;
 ```
 
 ## Como rodar
@@ -56,6 +72,28 @@ Authorization: Bearer <token>
 
 O token é retornado tanto no cadastro quanto no login.
 
+## Migrações de Banco de Dados (Flyway)
+
+A API usa **Flyway** para gerenciar mudanças no schema do PostgreSQL.
+
+### Arquivos de Migração
+Os arquivos SQL estão em `src/main/resources/db/migration/`:
+- `V1__initial_schema.sql` — schema inicial com todas as tabelas
+- `V2__update_appointments_schema.sql` — alterações para suportar múltiplos serviços por agendamento
+
+### Adicionar Novas Migrações
+Quando precisar alterar o schema:
+
+1. Crie um novo arquivo `V{numero}__descricao.sql` em `src/main/resources/db/migration/`
+2. Nunca edite arquivos já criados (Flyway detectará como erro)
+3. Na próxima execução, o Flyway executará automaticamente
+
+Exemplo:
+```sql
+-- V3__add_new_column.sql
+ALTER TABLE users ADD COLUMN last_login TIMESTAMP;
+```
+
 ## Isolamento de dados
 
 Cada usuário só acessa os **próprios dados**:
@@ -73,7 +111,7 @@ Cada usuário só acessa os **próprios dados**:
 
 ### Professionals (Perfil Profissional)
 - 1:1 com Users
-- Contém: profissão, bio, tarifa horária, avaliação, disponibilidade
+- Contém: profissão, bio, disponibilidade
 - Profissão é referência a tabela `professions`
 
 ### Clients (Perfil Cliente)
@@ -87,10 +125,16 @@ Cada usuário só acessa os **próprios dados**:
 ### Service Types (Tipos de Serviço)
 - Serviços oferecidos por cada profissional
 - 1:N com Professionals (cada profissional pode oferecer vários serviços)
+- Cada serviço tem um `price` (preço fixo por serviço)
+
+### Appointment Services (Serviços do Agendamento)
+- Tabela de junção M:N entre Appointments e ServiceTypes
+- Um agendamento pode ter múltiplos serviços
 
 ### Appointments (Agendamentos)
 - Relação entre profissional e cliente
-- Referencia tipo de serviço
+- Podem incluir múltiplos serviços (M:N via `AppointmentServiceEntity`)
+- `totalAmount` é calculado automaticamente como a soma dos preços dos serviços inclusos
 
 ---
 
@@ -113,8 +157,7 @@ Público. Cria um novo usuário com seu perfil (profissional ou cliente).
   "password": "senha123",
   "role": "PROFESSIONAL",
   "professionId": 1,
-  "bio": "Eletricista com 10 anos de experiência",
-  "hourlyRate": 80.50
+  "bio": "Eletricista com 10 anos de experiência"
 }
 ```
 
@@ -144,8 +187,6 @@ Público. Cria um novo usuário com seu perfil (profissional ou cliente).
     "professionId": 1,
     "professionName": "Eletricista",
     "bio": "Eletricista com 10 anos de experiência",
-    "hourlyRate": 80.50,
-    "ratingAverage": 0.0,
     "isAvailable": true
   },
   "clientProfile": null
@@ -193,8 +234,6 @@ Autenticado. Retorna os dados completos do usuário pelo token.
     "professionId": 1,
     "professionName": "Eletricista",
     "bio": "Eletricista com 10 anos de experiência",
-    "hourlyRate": 80.50,
-    "ratingAverage": 4.8,
     "isAvailable": true
   }
 }
@@ -237,8 +276,6 @@ Público. Busca profissionais com filtros opcionais. **Retorna o ID do profissio
     "phone": "11999990002",
     "professionName": "Desenvolvedor",
     "bio": "Desenvolvedora fullstack especializada em Java e React",
-    "hourlyRate": 150.00,
-    "ratingAverage": 4.9,
     "isAvailable": true
   }
 ]
@@ -257,8 +294,6 @@ Público. Retorna perfil completo do profissional pelo ID (user_id).
   "phone": "11999990002",
   "professionName": "Desenvolvedor",
   "bio": "Desenvolvedora fullstack especializada em Java e React",
-  "hourlyRate": 150.00,
-  "ratingAverage": 4.9,
   "isAvailable": true
 }
 ```
@@ -274,12 +309,14 @@ Público. Retorna todos os tipos de serviço oferecidos pelo profissional.
   {
     "id": 3,
     "name": "Desenvolvimento Web",
-    "description": "Criação de sites e aplicações web"
+    "description": "Criação de sites e aplicações web",
+    "price": 200.00
   },
   {
     "id": 4,
     "name": "Desenvolvimento de API",
-    "description": "Criação de APIs REST e integração de sistemas"
+    "description": "Criação de APIs REST e integração de sistemas",
+    "price": 180.00
   }
 ]
 ```
@@ -309,13 +346,14 @@ Público. Retorna todas as profissões cadastradas para uso nos filtros de busca
 Todos os endpoints requerem autenticação.
 
 #### `POST /service-types` — Criar tipo de serviço
-Cria um serviço vinculado ao usuário autenticado (deve ser profissional).
+Autenticado. Cria um serviço vinculado ao profissional autenticado. O `price` define o valor cobrado por esse serviço.
 
 **Body:**
 ```json
 {
-  "name": "Corte de cabelo",
-  "description": "Corte masculino simples"
+  "name": "Instalação Elétrica",
+  "description": "Instalação de tomadas, disjuntores e fiação",
+  "price": 150.00
 }
 ```
 
@@ -323,9 +361,9 @@ Cria um serviço vinculado ao usuário autenticado (deve ser profissional).
 ```json
 {
   "id": 1,
-  "name": "Corte de cabelo",
-  "description": "Corte masculino simples",
-  "owner": { "id": 1, "name": "João Silva" }
+  "name": "Instalação Elétrica",
+  "description": "Instalação de tomadas, disjuntores e fiação",
+  "price": 150.00
 }
 ```
 
@@ -340,7 +378,8 @@ Retorna apenas os serviços do usuário autenticado.
   {
     "id": 1,
     "name": "Instalação Elétrica",
-    "description": "Instalação de tomadas, disjuntores e fiação"
+    "description": "Instalação de tomadas, disjuntores e fiação",
+    "price": 150.00
   }
 ]
 ```
@@ -439,15 +478,14 @@ Autenticado. Retorna todas as avaliações feitas pelo cliente autenticado.
 Todos os endpoints requerem autenticação.
 
 #### `POST /appointments` — Criar agendamento
-O usuário autenticado deve ser o profissional **ou** o cliente.
+O usuário autenticado deve ser o profissional **ou** o cliente. Pode incluir múltiplos serviços. O valor total é calculado automaticamente pela soma dos preços dos serviços.
 
 **Body:**
 ```json
 {
   "professionalId": 1,
   "clientId": 2,
-  "serviceTypeId": 1,
-  "valueInCents": 5000,
+  "serviceTypeIds": [1, 3],
   "scheduleDate": "2026-03-20T14:00:00"
 }
 ```
@@ -458,8 +496,11 @@ O usuário autenticado deve ser o profissional **ou** o cliente.
   "id": 1,
   "professional": { "id": 1, "name": "João Silva" },
   "client": { "id": 2, "name": "Maria" },
-  "serviceType": { "id": 1, "name": "Corte de cabelo" },
-  "valueInCents": 5000,
+  "services": [
+    { "id": 1, "name": "Instalação Elétrica", "price": 150.00 },
+    { "id": 3, "name": "Inspeção", "price": 50.00 }
+  ],
+  "totalAmount": 200.00,
   "scheduleDate": "2026-03-20T14:00:00",
   "requestDate": "2026-03-11T10:00:00"
 }

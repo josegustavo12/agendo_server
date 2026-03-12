@@ -1,6 +1,8 @@
 package agendo.app.server.modules.appointment.models;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import agendo.app.server.modules.user.models.UserEntity;
 import jakarta.persistence.Column;
@@ -11,6 +13,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -31,10 +34,6 @@ public class AppointmentEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "service_type_id", nullable = false)
-    private ServiceTypeEntity serviceType;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "professional_id", nullable = false)
     private UserEntity professional;
 
@@ -42,8 +41,11 @@ public class AppointmentEntity {
     @JoinColumn(name = "client_id", nullable = false)
     private UserEntity client;
 
-    @Column(nullable = false)
-    private Integer valueInCents; // Valor em centavos (ex: 15000 para R$ 150,00)
+    @OneToMany(mappedBy = "appointment", fetch = FetchType.LAZY)
+    private List<AppointmentServiceEntity> services;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal totalAmount;
 
     @Column(nullable = false)
     private LocalDateTime scheduleDate;

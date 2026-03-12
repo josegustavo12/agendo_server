@@ -56,7 +56,6 @@ public class UserController {
                 user,
                 request.professionId(),
                 request.bio(),
-                request.hourlyRate(),
                 request.taxId(),
                 request.preferredPaymentMethod()
         );
@@ -110,8 +109,6 @@ public class UserController {
                     profile.getProfession() != null ? profile.getProfession().getId() : null,
                     profile.getProfession() != null ? profile.getProfession().getName() : null,
                     profile.getBio(),
-                    profile.getHourlyRate(),
-                    profile.getRatingAverage(),
                     profile.getIsAvailable()
                 );
             }

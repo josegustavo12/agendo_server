@@ -41,6 +41,7 @@ public class ServiceTypeController {
         ServiceTypeEntity serviceType = ServiceTypeEntity.builder()
                 .name(request.name())
                 .description(request.description())
+                .price(request.price())
                 .owner(user)
                 .build();
         return ResponseEntity.status(201).body(serviceTypeService.create(serviceType));

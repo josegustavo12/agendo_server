@@ -15,11 +15,13 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import agendo.app.server.modules.appointment.dto.AppointmentResponse;
-import agendo.app.server.modules.appointment.dto.AppointmentResponse.UserSummary;
 import agendo.app.server.modules.appointment.dto.AppointmentResponse.ServiceTypeSummary;
+import agendo.app.server.modules.appointment.dto.AppointmentResponse.UserSummary;
 import agendo.app.server.modules.appointment.dto.CreateAppointmentRequest;
 import agendo.app.server.modules.appointment.models.AppointmentEntity;
+import agendo.app.server.modules.appointment.models.AppointmentServiceEntity;
 import agendo.app.server.modules.appointment.models.ServiceTypeEntity;
+import agendo.app.server.modules.appointment.repository.AppointmentServiceRepository;
 import agendo.app.server.modules.appointment.service.AppointmentService;
 import agendo.app.server.modules.appointment.service.ServiceTypeService;
 import agendo.app.server.modules.user.models.UserEntity;
@@ -37,21 +39,21 @@ import lombok.RequiredArgsConstructor;
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
+    private final AppointmentServiceRepository appointmentServiceRepository;
     private final ServiceTypeService serviceTypeService;
     private final UserService userService;
 
     @PostMapping
-    @Operation(summary = "Criar agendamento", description = "O usuário autenticado deve ser o profissional ou o cliente do agendamento")
+    @Operation(summary = "Criar agendamento", description = "O usuário autenticado deve ser o profissional ou o cliente. Suporta múltiplos serviços — o totalAmount é calculado automaticamente.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Agendamento criado com sucesso"),
         @ApiResponse(responseCode = "403", description = "Usuário autenticado não é parte deste agendamento"),
         @ApiResponse(responseCode = "404", description = "Profissional, cliente ou tipo de serviço não encontrado")
     })
     public ResponseEntity<AppointmentResponse> create(
-            @RequestBody CreateAppointmentRequest request, // DTO, o cliente envia apenas o necessário para criar o Appointment (ao invez de criar um AppointmentEntity direto
+            @RequestBody CreateAppointmentRequest request,
             @AuthenticationPrincipal UserEntity user) {
 
-        // validacao da role do usuario
         boolean isProfessional = user.getId().equals(request.professionalId());
         boolean isClient = user.getId().equals(request.clientId());
         if (!isProfessional && !isClient) {
@@ -60,24 +62,24 @@ public class AppointmentController {
 
         UserEntity professional = isProfessional ? user : userService.findById(request.professionalId());
         UserEntity client = isClient ? user : userService.findById(request.clientId());
-        ServiceTypeEntity serviceType = serviceTypeService.findByIdAndOwner(request.serviceTypeId(), professional);
+
+        List<ServiceTypeEntity> serviceTypes = request.serviceTypeIds().stream()
+                .map(id -> serviceTypeService.findByIdAndOwner(id, professional))
+                .toList();
 
         AppointmentEntity appointment = AppointmentEntity.builder()
-                .serviceType(serviceType)
                 .professional(professional)
                 .client(client)
-                .valueInCents(request.valueInCents())
                 .scheduleDate(request.scheduleDate())
-                .build(); // usando o builder para construir o appointment
+                .build();
 
-        // chama o service (que chama o repository) para cosntruir o appointment baseado no objeto AppoitmentEntity criado
-        return ResponseEntity.status(201).body(toResponse(appointmentService.create(appointment)));
+        return ResponseEntity.status(201).body(toResponse(appointmentService.create(appointment, serviceTypes)));
     }
 
     @GetMapping
     @Operation(
         summary = "Listar agendamentos",
-        description = "Retorna agendamentos do usuário. Use o parâmetro 'role' para filtrar por 'professional' ou 'client'. Sem o parâmetro, retorna todos."
+        description = "Retorna agendamentos do usuário. Use 'role' para filtrar por 'professional' ou 'client'."
     )
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso"),
@@ -105,12 +107,21 @@ public class AppointmentController {
     }
 
     private AppointmentResponse toResponse(AppointmentEntity a) {
+        List<AppointmentServiceEntity> services = appointmentServiceRepository.findByAppointmentId(a.getId());
+
+        List<ServiceTypeSummary> serviceSummaries = services.stream()
+                .map(s -> new ServiceTypeSummary(
+                        s.getServiceType().getId(),
+                        s.getServiceType().getName(),
+                        s.getServiceType().getPrice()))
+                .toList();
+
         return new AppointmentResponse(
             a.getId(),
             new UserSummary(a.getProfessional().getId(), a.getProfessional().getName()),
             new UserSummary(a.getClient().getId(), a.getClient().getName()),
-            new ServiceTypeSummary(a.getServiceType().getId(), a.getServiceType().getName()),
-            a.getValueInCents(),
+            serviceSummaries,
+            a.getTotalAmount(),
             a.getScheduleDate(),
             a.getRequestDate()
         );

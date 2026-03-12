@@ -86,7 +86,7 @@ public class ProfessionalController {
         List<ServiceTypeEntity> services = serviceTypeRepository.findByOwnerId(id);
 
         List<ServiceTypeResponse> response = services.stream()
-                .map(st -> new ServiceTypeResponse(st.getId(), st.getName(), st.getDescription()))
+                .map(st -> new ServiceTypeResponse(st.getId(), st.getName(), st.getDescription(), st.getPrice()))
                 .toList();
 
         return ResponseEntity.ok(response);
@@ -99,8 +99,6 @@ public class ProfessionalController {
             profile.getUser().getPhone(),
             profile.getProfession() != null ? profile.getProfession().getName() : null,
             profile.getBio(),
-            profile.getHourlyRate(),
-            profile.getRatingAverage(),
             profile.getIsAvailable()
         );
     }

@@ -99,25 +99,25 @@ class IntegrationTest {
 
         // 3. Criar ServiceType com token
         String stBody = """
-                {"name":"Corte de Cabelo %s","description":"Serviço de corte profissional"}
+                {"name":"Corte de Cabelo %s","description":"Serviço de corte profissional","price":150.00}
                 """.formatted(UUID.randomUUID().toString().substring(0, 8));
 
         HttpResponse<String> stResponse = postJson("/service-types", stBody, token);
         assertEquals(201, stResponse.statusCode());
         long serviceTypeId = mapper.readTree(stResponse.body()).get("id").asLong();
 
-        // 4. Criar Appointment com token
+        // 4. Criar Appointment com token (múltiplos serviços)
         String appBody = """
-                {"serviceTypeId":%d,"professionalId":%d,"clientId":%d,"valueInCents":5000,"scheduleDate":"%s"}
+                {"serviceTypeIds":[%d],"professionalId":%d,"clientId":%d,"scheduleDate":"%s"}
                 """.formatted(serviceTypeId, professionalId, clientId, LocalDateTime.now().plusDays(7));
 
         HttpResponse<String> appResponse = postJson("/appointments", appBody, token);
         assertEquals(201, appResponse.statusCode());
 
         JsonNode appJson = mapper.readTree(appResponse.body());
-        assertEquals(5000, appJson.get("valueInCents").asInt());
+        assertEquals(150.0, appJson.get("totalAmount").asDouble());
         assertEquals(clientId, appJson.get("client").get("id").asLong());
         assertEquals(professionalId, appJson.get("professional").get("id").asLong());
-        assertEquals(serviceTypeId, appJson.get("serviceType").get("id").asLong());
+        assertEquals(1, appJson.get("services").size());
     }
 }

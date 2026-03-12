@@ -9,8 +9,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import agendo.app.server.modules.appointment.models.AppointmentEntity;
+import agendo.app.server.modules.appointment.models.AppointmentServiceEntity;
 import agendo.app.server.modules.appointment.models.ServiceTypeEntity;
 import agendo.app.server.modules.appointment.repository.AppointmentRepository;
+import agendo.app.server.modules.appointment.repository.AppointmentServiceRepository;
 import agendo.app.server.modules.appointment.repository.ServiceTypeRepository;
 import agendo.app.server.modules.user.models.ClientProfileEntity;
 import agendo.app.server.modules.user.models.ProfessionalProfileEntity;
@@ -36,6 +38,7 @@ public class DataSeeder implements CommandLineRunner {
     private final ClientProfileRepository clientProfileRepository;
     private final ServiceTypeRepository serviceTypeRepository;
     private final AppointmentRepository appointmentRepository;
+    private final AppointmentServiceRepository appointmentServiceRepository;
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
 
@@ -44,8 +47,9 @@ public class DataSeeder implements CommandLineRunner {
     public void run(String... args) {
         log.info("=== Iniciando seed do banco de dados ===");
 
-        // 1. Limpar tudo (deleteAllInBatch executa DELETE direto no banco, sem carregar entidades)
+        // 1. Limpar tudo
         log.info("Excluindo todos os dados...");
+        appointmentServiceRepository.deleteAllInBatch();
         appointmentRepository.deleteAllInBatch();
         serviceTypeRepository.deleteAllInBatch();
         professionalProfileRepository.deleteAllInBatch();
@@ -96,8 +100,6 @@ public class DataSeeder implements CommandLineRunner {
                 .user(joao)
                 .profession(eletricista)
                 .bio("Eletricista com 10 anos de experiência em instalações residenciais e comerciais.")
-                .hourlyRate(new BigDecimal("80.00"))
-                .ratingAverage(4.8)
                 .isAvailable(true)
                 .build());
 
@@ -105,8 +107,6 @@ public class DataSeeder implements CommandLineRunner {
                 .user(maria)
                 .profession(desenvolvedor)
                 .bio("Desenvolvedora fullstack especializada em Java e React.")
-                .hourlyRate(new BigDecimal("150.00"))
-                .ratingAverage(4.9)
                 .isAvailable(true)
                 .build());
 
@@ -114,8 +114,6 @@ public class DataSeeder implements CommandLineRunner {
                 .user(carlos)
                 .profession(encanador)
                 .bio("Encanador profissional, atendo urgências 24h.")
-                .hourlyRate(new BigDecimal("70.00"))
-                .ratingAverage(4.5)
                 .isAvailable(false)
                 .build());
 
@@ -153,73 +151,184 @@ public class DataSeeder implements CommandLineRunner {
 
         log.info("Clientes criados: Ana, Pedro");
 
-        // 7. Criar tipos de serviço
+        // 7. Criar tipos de serviço para João (Eletricista)
         ServiceTypeEntity instalacaoEletrica = serviceTypeRepository.save(ServiceTypeEntity.builder()
                 .name("Instalação Elétrica")
                 .description("Instalação de tomadas, disjuntores e fiação em geral")
+                .price(new BigDecimal("150.00"))
                 .owner(joao)
                 .build());
 
         ServiceTypeEntity manutencaoEletrica = serviceTypeRepository.save(ServiceTypeEntity.builder()
                 .name("Manutenção Elétrica")
                 .description("Reparo e manutenção de sistemas elétricos")
+                .price(new BigDecimal("120.00"))
                 .owner(joao)
                 .build());
 
+        ServiceTypeEntity inspecaoEletrica = serviceTypeRepository.save(ServiceTypeEntity.builder()
+                .name("Inspeção Elétrica")
+                .description("Inspeção técnica de instalações elétricas")
+                .price(new BigDecimal("80.00"))
+                .owner(joao)
+                .build());
+
+        ServiceTypeEntity trocaDisjuntor = serviceTypeRepository.save(ServiceTypeEntity.builder()
+                .name("Troca de Disjuntor")
+                .description("Substituição de disjuntores e dispositivos de proteção")
+                .price(new BigDecimal("100.00"))
+                .owner(joao)
+                .build());
+
+        // 8. Criar tipos de serviço para Maria (Desenvolvedora)
         ServiceTypeEntity devWeb = serviceTypeRepository.save(ServiceTypeEntity.builder()
                 .name("Desenvolvimento Web")
-                .description("Criação de sites e aplicações web")
+                .description("Criação de sites e aplicações web responsivas")
+                .price(new BigDecimal("200.00"))
                 .owner(maria)
                 .build());
 
         ServiceTypeEntity devApi = serviceTypeRepository.save(ServiceTypeEntity.builder()
                 .name("Desenvolvimento de API")
                 .description("Criação de APIs REST e integração de sistemas")
+                .price(new BigDecimal("180.00"))
                 .owner(maria)
                 .build());
 
+        ServiceTypeEntity consultoriaWeb = serviceTypeRepository.save(ServiceTypeEntity.builder()
+                .name("Consultoria Web")
+                .description("Consultoria técnica para projetos web")
+                .price(new BigDecimal("150.00"))
+                .owner(maria)
+                .build());
+
+        ServiceTypeEntity debugFixBug = serviceTypeRepository.save(ServiceTypeEntity.builder()
+                .name("Debug e Correção de Bugs")
+                .description("Identificação e correção de erros em código existente")
+                .price(new BigDecimal("100.00"))
+                .owner(maria)
+                .build());
+
+        ServiceTypeEntity testingQA = serviceTypeRepository.save(ServiceTypeEntity.builder()
+                .name("Testes e QA")
+                .description("Testes automatizados e garantia de qualidade")
+                .price(new BigDecimal("120.00"))
+                .owner(maria)
+                .build());
+
+        // 9. Criar tipos de serviço para Carlos (Encanador)
         ServiceTypeEntity reparoHidraulico = serviceTypeRepository.save(ServiceTypeEntity.builder()
                 .name("Reparo Hidráulico")
                 .description("Conserto de vazamentos, troca de torneiras e válvulas")
+                .price(new BigDecimal("130.00"))
                 .owner(carlos)
                 .build());
 
-        log.info("Tipos de serviço criados: 5 serviços");
+        ServiceTypeEntity instalacaoEncanacao = serviceTypeRepository.save(ServiceTypeEntity.builder()
+                .name("Instalação de Encanação")
+                .description("Instalação de tubulações e sistemas hidráulicos")
+                .price(new BigDecimal("160.00"))
+                .owner(carlos)
+                .build());
 
-        // 8. Criar agendamentos
-        appointmentRepository.save(AppointmentEntity.builder()
-                .serviceType(instalacaoEletrica)
+        ServiceTypeEntity trocaSifao = serviceTypeRepository.save(ServiceTypeEntity.builder()
+                .name("Troca de Sifão")
+                .description("Substituição de sifões de pias, chuveiros e vasos")
+                .price(new BigDecimal("90.00"))
+                .owner(carlos)
+                .build());
+
+        ServiceTypeEntity limpezaTubulacao = serviceTypeRepository.save(ServiceTypeEntity.builder()
+                .name("Limpeza de Tubulação")
+                .description("Desobstrução e limpeza de canos entupidos")
+                .price(new BigDecimal("110.00"))
+                .owner(carlos)
+                .build());
+
+        log.info("Tipos de serviço criados: 13 serviços no total");
+
+        // 10. Criar agendamentos com múltiplos serviços
+        AppointmentEntity app1 = appointmentRepository.save(AppointmentEntity.builder()
                 .professional(joao)
                 .client(ana)
-                .valueInCents(16000)
+                .totalAmount(new BigDecimal("230.00"))
                 .scheduleDate(LocalDateTime.of(2026, 3, 15, 9, 0))
                 .build());
 
-        appointmentRepository.save(AppointmentEntity.builder()
-                .serviceType(devWeb)
+        appointmentServiceRepository.save(AppointmentServiceEntity.builder()
+                .appointment(app1)
+                .serviceType(instalacaoEletrica)
+                .build());
+
+        appointmentServiceRepository.save(AppointmentServiceEntity.builder()
+                .appointment(app1)
+                .serviceType(inspecaoEletrica)
+                .build());
+
+        AppointmentEntity app2 = appointmentRepository.save(AppointmentEntity.builder()
                 .professional(maria)
                 .client(pedro)
-                .valueInCents(60000)
+                .totalAmount(new BigDecimal("380.00"))
                 .scheduleDate(LocalDateTime.of(2026, 3, 18, 14, 0))
                 .build());
 
-        appointmentRepository.save(AppointmentEntity.builder()
-                .serviceType(manutencaoEletrica)
+        appointmentServiceRepository.save(AppointmentServiceEntity.builder()
+                .appointment(app2)
+                .serviceType(devWeb)
+                .build());
+
+        appointmentServiceRepository.save(AppointmentServiceEntity.builder()
+                .appointment(app2)
+                .serviceType(debugFixBug)
+                .build());
+
+        AppointmentEntity app3 = appointmentRepository.save(AppointmentEntity.builder()
                 .professional(joao)
                 .client(pedro)
-                .valueInCents(12000)
+                .totalAmount(new BigDecimal("120.00"))
                 .scheduleDate(LocalDateTime.of(2026, 3, 20, 10, 30))
                 .build());
 
-        appointmentRepository.save(AppointmentEntity.builder()
-                .serviceType(devApi)
+        appointmentServiceRepository.save(AppointmentServiceEntity.builder()
+                .appointment(app3)
+                .serviceType(manutencaoEletrica)
+                .build());
+
+        AppointmentEntity app4 = appointmentRepository.save(AppointmentEntity.builder()
                 .professional(maria)
                 .client(ana)
-                .valueInCents(45000)
+                .totalAmount(new BigDecimal("320.00"))
                 .scheduleDate(LocalDateTime.of(2026, 3, 22, 16, 0))
                 .build());
 
-        log.info("Agendamentos criados: 4 agendamentos");
+        appointmentServiceRepository.save(AppointmentServiceEntity.builder()
+                .appointment(app4)
+                .serviceType(devApi)
+                .build());
+
+        appointmentServiceRepository.save(AppointmentServiceEntity.builder()
+                .appointment(app4)
+                .serviceType(testingQA)
+                .build());
+
+        AppointmentEntity app5 = appointmentRepository.save(AppointmentEntity.builder()
+                .professional(carlos)
+                .client(ana)
+                .totalAmount(new BigDecimal("240.00"))
+                .scheduleDate(LocalDateTime.of(2026, 3, 25, 11, 0))
+                .build());
+
+        appointmentServiceRepository.save(AppointmentServiceEntity.builder()
+                .appointment(app5)
+                .serviceType(reparoHidraulico)
+                .build());
+
+        appointmentServiceRepository.save(AppointmentServiceEntity.builder()
+                .appointment(app5)
+                .serviceType(trocaSifao)
+                .build());
+
+        log.info("Agendamentos criados: 5 agendamentos com múltiplos serviços");
         log.info("=== Seed concluído com sucesso! ===");
         log.info("Senha padrão de todos os usuários: 123456");
     }

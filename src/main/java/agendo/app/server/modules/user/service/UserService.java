@@ -1,6 +1,5 @@
 package agendo.app.server.modules.user.service;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,20 +31,14 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public UserEntity create(UserEntity user) {
-        return userRepository.save(user);
-    }
-
-    @Transactional
-    public UserEntity createWithProfile(UserEntity user, Long professionId, String bio, BigDecimal hourlyRate,
-                                         String taxId, String preferredPaymentMethod) {
+    public UserEntity createWithProfile(UserEntity user, Long professionId, String bio,
+                                        String taxId, String preferredPaymentMethod) {
         UserEntity savedUser = userRepository.save(user);
 
         if (savedUser.getRole() == UserRole.PROFESSIONAL) {
             ProfessionalProfileEntity.ProfessionalProfileEntityBuilder profileBuilder = ProfessionalProfileEntity.builder()
                     .user(savedUser)
-                    .bio(bio)
-                    .hourlyRate(hourlyRate);
+                    .bio(bio);
 
             if (professionId != null) {
                 ProfessionEntity profession = professionRepository.findById(professionId)

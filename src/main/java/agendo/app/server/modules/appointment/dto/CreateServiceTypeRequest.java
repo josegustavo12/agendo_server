@@ -1,3 +1,5 @@
 package agendo.app.server.modules.appointment.dto;
 
-public record CreateServiceTypeRequest(String name, String description) {}
+import java.math.BigDecimal;
+
+public record CreateServiceTypeRequest(String name, String description, BigDecimal price) {}
