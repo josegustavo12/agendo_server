@@ -557,3 +557,53 @@ Retorna apenas se o usuário autenticado for profissional ou cliente do agendame
 ## Seed do banco de dados
 
 Na primeira execução, a aplicação popula automaticamente o banco com dados de exemplo (profissões, usuários, serviços e agendamentos). Todos os usuários têm senha padrão: `123456`.
+
+## Como rodar?
+
+Para produção:
+```bash
+docker compose --profile prod up
+```
+
+Para desenvolvimento (c/ hot reload ativado):
+```bash
+docker compose --profile dev up
+```
+
+## Fluxo de Pull Requests
+
+### Como abrir um PR
+
+1. **Faça push da sua branch:**
+```bash
+git push origin sua-branch
+```
+
+2. **Abra o PR usando GitHub CLI:**
+```bash
+gh pr create --title "seu titulo" --body "sua descricao" --head sua-branch --base target-branch
+```
+
+3. **Substitua `target-branch` por:**
+   - `develop` — para mudanças de desenvolvimento
+   - `release` — para preparar uma versão (release candidates)
+   - `main` — para fazer merge de releases finalizadas
+
+### Exemplo prático:
+
+```bash
+# Feature de desenvolvimento → develop
+gh pr create --title "feat: add hot reload" --body "Configures Docker with hot reload support" --head feature/hot-reload --base develop
+
+# Release candidate → release
+gh pr create --title "chore: version 1.0.0" --body "Release candidate v1.0.0" --head develop --base release
+
+# Release finalizada → main
+gh pr create --title "Merge release into main" --body "Release v1.0.0" --head release --base main
+```
+
+**Padrão neste projeto:**
+- `feature/*` → faz PR para `develop` (opcional, mas recomendado)
+- `develop` → faz PR para `release` (com testes passing)
+- `release` → faz PR para `main` (versão final testada)
+
